@@ -308,7 +308,7 @@
 
 <header>
     <h1>BALLET</h1>
-    <button class="btn btn-close-month" id="closeMonthBtn">Փակել Ամիսը</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;"><a class="btn btn-save" href="cash.html" style="text-decoration:none;">💰 Դրամարկղ</a><button class="btn btn-close-month" id="closeMonthBtn">Փակել Ամիսը</button></div>
 </header>
 
 <div class="main-container">
@@ -394,6 +394,10 @@
         <div class="form-group">
             <label>Նոր Խմբի Անվանում</label>
             <input type="text" id="newGroupLabel" placeholder="Օր. Արտաշատ - Ակրոբատիկա - 15:00">
+        </div>
+        <div class="form-group">
+            <label>Ամսական Վարձ (֏) *</label>
+            <input type="number" id="newGroupPrice" placeholder="Օր. 15000" min="1" step="any">
         </div>
         <button class="btn btn-add" id="addGroupBtn" style="width:100%;">+ Ավելացնել Խումբ</button>
         <hr>
@@ -581,7 +585,7 @@ onAuthStateChanged(auth, (user) => {
         groupsCache.forEach(g => {
             const li = document.createElement('li');
             const span = document.createElement('span');
-            span.textContent = g.label;
+            span.textContent = g.label + ' — ' + (g.price > 0 ? Number(g.price).toLocaleString('en-US') + ' ֏' : 'վարձ չկա');
             const delBtn = document.createElement('button');
             delBtn.className = 'btn btn-delete';
             delBtn.textContent = 'X';
@@ -593,8 +597,25 @@ onAuthStateChanged(auth, (user) => {
                     renderList();
                 }
             });
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-save';
+            editBtn.style.cssText = 'padding:4px 8px;font-size:12px;margin-right:6px;';
+            editBtn.textContent = '✎ Վարձ';
+            editBtn.addEventListener('click', async () => {
+                const v = prompt(`"${g.label}" խմբի նոր ամսական վարձը (֏):`, g.price || '');
+                if (v === null) return;
+                const n = Number(v);
+                if (!(n > 0)) { alert('Մուտքագրեք 0-ից մեծ թիվ'); return; }
+                await updateDoc(doc(db, "groups", g.id), { price: n });
+                await loadGroups();
+                renderGroupList();
+            });
+            const box = document.createElement('div');
+            box.style.cssText = 'display:flex;align-items:center;';
+            box.appendChild(editBtn);
+            box.appendChild(delBtn);
             li.appendChild(span);
-            li.appendChild(delBtn);
+            li.appendChild(box);
             groupList.appendChild(li);
         });
     }
@@ -612,8 +633,14 @@ onAuthStateChanged(auth, (user) => {
             alert('Գրեք խմբի անվանումը');
             return;
         }
-        await addDoc(collection(db, "groups"), { label, createdAt: new Date() });
+        const price = Number(document.getElementById('newGroupPrice').value);
+        if (!(price > 0)) {
+            alert('Նշեք խմբի ամսական վարձը (0-ից մեծ)');
+            return;
+        }
+        await addDoc(collection(db, "groups"), { label, price, createdAt: new Date() });
         input.value = '';
+        document.getElementById('newGroupPrice').value = '';
         await loadGroups();
         renderGroupList();
     });
@@ -797,13 +824,14 @@ onAuthStateChanged(auth, (user) => {
                 const newGroupObj = groupsCache.find(g => g.id === newGroupId);
                 const newGroupLabel = newGroupObj ? newGroupObj.label : '';
 
-                let updatedAttendance = [...attendanceHistory];
-                let updatedPayments = [...paymentHistory];
+                let updatedAttendance = [...(student.attendance || [])];
+                let updatedPayments = [...(student.payments || [])];
 
                 if (attStatus) {
                     updatedAttendance.push(`${today} (${attStatus})`);
                 }
-                if (payStatus && !isPaid) {
+                const wasPaid = !!student.isPaid;
+                if (payStatus && !wasPaid) {
                     updatedPayments.push(today);
                 }
 
@@ -816,6 +844,28 @@ onAuthStateChanged(auth, (user) => {
                         groupId: newGroupId,
                         groupLabel: newGroupLabel
                     });
+
+                    // Վճարում → դրամարկղ (խմբի վարձի չափով)
+                    if (payStatus && !wasPaid) {
+                        const grp = groupsCache.find(g => g.id === newGroupId);
+                        if (grp && grp.price > 0) {
+                            const d = new Date();
+                            const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                            await addDoc(collection(db, "cash"), {
+                                type: 'tuition',
+                                title: `${student.childName} ${student.childSurname} (${grp.label})`,
+                                amount: grp.price,
+                                studentId: student.id,
+                                groupId: grp.id,
+                                groupLabel: grp.label,
+                                date: iso,
+                                monthKey: iso.slice(0, 7),
+                                createdAt: new Date()
+                            });
+                        } else {
+                            alert("Ուշադրություն: երեխան խումբ չունի կամ խմբի վարձը նշված չէ, գումարը դրամարկղում ՉԻ գրանցվել:");
+                        }
+                    }
 
                     // ԼՈԿԱԼ ԹԱՐՄԱՑՈՒՄ
                     student.isPaid = payStatus;
