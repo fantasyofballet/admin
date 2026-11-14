@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BALLET - Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        h2 { margin-bottom: 10px; color: #333; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        .error-msg { color: red; font-size: 14px; margin-bottom: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>BALLET</h2>
+    <p style="color: #666; margin-bottom: 20px;">Մուտք գործեք համակարգ</p>
+    <div class="error-msg" id="errorMsg">Սխալ էլ. հասցե կամ գաղտնաբառ:</div>
+    <input type="email" id="emailInput" placeholder="Էլ. հասցե" autofocus>
+    <input type="password" id="passwordInput" placeholder="Գաղտնաբառ">
+    <button id="loginBtn">Մուտք գործել</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // Քո Firebase կոնֆիգուրացիան
+    const firebaseConfig = {
+        apiKey: "AIzaSyDgyGEMIJfrT_N-U-a-39_U7N5JKfsLrvg",
+        authDomain: "ballet-82dcb.firebaseapp.com",
+        projectId: "ballet-82dcb",
+        storageBucket: "ballet-82dcb.firebasestorage.app",
+        messagingSenderId: "1020750431146",
+        appId: "1:1020750431146:web:e2880c0d6a26a9ba3a21d3",
+        measurementId: "G-N0W4X2ZLKJ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    async function handleLogin() {
+        const email = document.getElementById('emailInput').value;
+        const password = document.getElementById('passwordInput').value;
+        const errorMsg = document.getElementById('errorMsg');
+
+        try {
+            // Ստուգում ենք օգտատիրոջը Firebase-ի միջոցով
+            await signInWithEmailAndPassword(auth, email, password);
+            // Եթե ճիշտ է, տանում ենք ադմինիստրատորի էջ
+            window.location.href = "admin.html";
+        } catch (error) {
+            console.error(error);
+            errorMsg.style.display = "block";
+            document.getElementById('passwordInput').value = "";
+        }
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleLogin();
+    });
+</script>
+
+</body>
+</html>
